@@ -122,13 +122,18 @@ def collect_github_data(org: str, author: str, since_iso: str, token: str) -> Di
         if not full_name:
             continue
 
-        commits = list(
-            paged_get(
-                f"{GITHUB_API}/repos/{full_name}/commits",
-                headers,
-                {"author": author, "since": since_iso},
+        try:
+            commits = list(
+                paged_get(
+                    f"{GITHUB_API}/repos/{full_name}/commits",
+                    headers,
+                    {"author": author, "since": since_iso},
+                )
             )
-        )
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code in (409, 404, 451):
+                continue  # skip repo (empty, missing, or unavailable)
+            raise
 
         for commit in commits:
             sha = commit.get("sha")
