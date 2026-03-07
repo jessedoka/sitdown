@@ -11,6 +11,7 @@ permissions:
 jobs:
   run-daily-standup:
     runs-on: ubuntu-latest
+    environment: standup
     steps:
       - name: Checkout
         uses: actions/checkout@v4

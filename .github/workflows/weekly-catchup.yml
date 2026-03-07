@@ -11,6 +11,7 @@ permissions:
 jobs:
   run-weekly-catchup:
     runs-on: ubuntu-latest
+    environment: standup
     steps:
       - name: Checkout
         uses: actions/checkout@v4
