@@ -1,0 +1,103 @@
+# Breaking Standup (GitHub Actions + OpenAI + Resend)
+
+Automated standup and weekly catch-up summaries using:
+- GitHub commit activity
+- LeanKit cards
+- Google Calendar events
+- OpenAI for summary generation
+- Resend email delivery
+
+If an `Annual Leave` event is present on your Google Calendar, the workflow skips sending any message.
+
+## Workflows
+
+- `daily-standup.yml`: Mon-Fri at 9:00 UTC
+- `weekly-catchup.yml`: Tuesday at 9:00 UTC
+
+Both workflows also support manual run via `workflow_dispatch`.
+
+## Required Secrets
+
+Configure these repository secrets in GitHub:
+
+- `OPENAI_API_KEY`
+- `RESEND_API_KEY`
+- `STANDUP_EMAIL` (recipient email address)
+- `LEANKIT_BEARER_TOKEN`
+- `GOOGLE_CALENDAR_CREDENTIALS` (base64-encoded service-account JSON)
+- `GOOGLE_CALENDAR_ID` (for example `jesse.doka-nwogu@singletrack.com`)
+
+Notes:
+- `GITHUB_TOKEN` is provided by GitHub Actions automatically.
+
+## Optional Variables
+
+Repository variables:
+
+- `STANDUP_TIMEZONE` (default: `Europe/London`)
+- `OPENAI_MODEL` (default in scripts: `gpt-4o-mini`)
+- `RESEND_FROM` (optional sender; for example `Breaking Standup <onboarding@resend.dev>`)
+- `STANDUP_EMAIL_SUBJECT` (optional default subject when `--subject` is not provided)
+
+## Local Development
+
+Install dependencies:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Set environment variables locally:
+
+```bash
+export GITHUB_TOKEN="..."
+export LEANKIT_BEARER_TOKEN="..."
+export GOOGLE_CALENDAR_CREDENTIALS="..."   # base64 JSON
+export GOOGLE_CALENDAR_ID="jesse.doka-nwogu@singletrack.com"
+export OPENAI_API_KEY="..."
+export OPENAI_MODEL="gpt-4o-mini"          # optional
+export RESEND_API_KEY="..."
+export STANDUP_EMAIL="you@example.com"
+export RESEND_FROM="Breaking Standup <onboarding@resend.dev>"  # optional
+export GITHUB_ORG="singletracksystems"
+export GITHUB_AUTHOR="jessedoka"
+```
+
+Run daily flow:
+
+```bash
+python scripts/collect_data.py --mode daily --output data.json --timezone Europe/London
+python scripts/generate_standup.py --input data.json --output summary.txt
+python scripts/send_email.py --input summary.txt --subject "Daily Standup"
+```
+
+Run weekly flow:
+
+```bash
+python scripts/collect_data.py --mode weekly --output data.json --timezone Europe/London
+python scripts/generate_catchup.py --input data.json --output summary.txt
+python scripts/send_email.py --input summary.txt --subject "Weekly Catch-up"
+```
+
+## Slack + Anthropic Branch
+
+If you need the old Slack + Anthropic flow, keep or create a branch named `slack-anthropic` from the previous state. That branch should continue to use:
+
+- `ANTHROPIC_API_KEY` and optional `ANTHROPIC_MODEL`
+- `SLACK_BOT_TOKEN` and `SLACK_USER_ID`
+- `scripts/send_slack.py`
+
+## Data Shape (high level)
+
+`collect_data.py` writes `data.json` with:
+
+- `mode`
+- `generated_at`
+- `timezone`
+- `windows` (time ranges used)
+- `annual_leave` (boolean)
+- `github` (repos scanned, commits, changed files)
+- `leankit` (assigned cards, filtered subsets)
+- `calendar` (events in relevant window)

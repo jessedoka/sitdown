@@ -1,0 +1,57 @@
+name: Weekly Catch-up
+
+on:
+  schedule:
+    - cron: "0 9 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  run-weekly-catchup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Collect data
+        id: collect
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          LEANKIT_BEARER_TOKEN: ${{ secrets.LEANKIT_BEARER_TOKEN }}
+          GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.GOOGLE_CALENDAR_CREDENTIALS }}
+          GOOGLE_CALENDAR_ID: ${{ secrets.GOOGLE_CALENDAR_ID }}
+          GITHUB_ORG: singletracksystems
+          GITHUB_AUTHOR: jessedoka
+          STANDUP_TIMEZONE: ${{ vars.STANDUP_TIMEZONE }}
+        run: |
+          TZ_VALUE="${STANDUP_TIMEZONE:-Europe/London}"
+          python scripts/collect_data.py --mode weekly --output data.json --timezone "$TZ_VALUE"
+
+      - name: Skip because annual leave detected
+        if: steps.collect.outputs.annual_leave == 'true'
+        run: echo "Annual leave detected in Google Calendar. Skipping weekly catch-up."
+
+      - name: Generate weekly catch-up with OpenAI
+        if: steps.collect.outputs.annual_leave != 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+        run: python scripts/generate_catchup.py --input data.json --output summary.txt
+
+      - name: Send email (Resend)
+        if: steps.collect.outputs.annual_leave != 'true'
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          STANDUP_EMAIL: ${{ secrets.STANDUP_EMAIL }}
+          RESEND_FROM: ${{ vars.RESEND_FROM }}
+        run: python scripts/send_email.py --input summary.txt --subject "Weekly Catch-up"
