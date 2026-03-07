@@ -1,4 +1,4 @@
-# Breaking Standup (GitHub Actions + OpenAI + Resend)
+# SitDown (GitHub Actions + OpenAI + Resend)
 
 Automated standup and weekly catch-up summaries using:
 - GitHub commit activity
