@@ -1,3 +1,4 @@
 /Breaking Standup (4).json
 
 **/*.pyc
+.env-local
