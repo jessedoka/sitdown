@@ -65,6 +65,35 @@ export GITHUB_ORG="singletracksystems"
 export GITHUB_AUTHOR="jessedoka"
 ```
 
+### One-command scripts (recommended)
+
+From repo root, with `.env-local` (or env vars) set:
+
+```bash
+# Daily: collect → generate → send
+./scripts/run_daily.sh
+
+# Daily but only print what would be emailed (no send)
+./scripts/run_daily.sh --dry-run
+
+# Weekly
+./scripts/run_weekly.sh
+./scripts/run_weekly.sh --dry-run
+```
+
+Use `--no-collect` to reuse existing `data.json` (e.g. `./scripts/run_daily.sh --no-collect --dry-run`).
+
+### Test without sending (use existing data.json)
+
+No API collect, no real email—good for testing prompts or generation:
+
+```bash
+./scripts/test_pipeline.sh        # daily from data.json, dry-run email
+./scripts/test_pipeline.sh weekly # weekly from data.json, dry-run email
+```
+
+### Manual step-by-step
+
 Run daily flow:
 
 ```bash
