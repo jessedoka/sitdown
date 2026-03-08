@@ -101,6 +101,5 @@ def main() -> None:
     output_path.write_text(summary + "\n", encoding="utf-8")
     print(f"Wrote {output_path}")
 
-
 if __name__ == "__main__":
     main()
