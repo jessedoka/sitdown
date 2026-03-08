@@ -9,24 +9,38 @@ import os
 from pathlib import Path
 
 from openai import OpenAI
-from standup_utils import enrich_cards_with_commit_proof
+from standup_utils import commits_without_ticket, dedupe_cards, enrich_cards_with_commit_proof
 
 
-SYSTEM_PROMPT = """You are writing a daily standup update as a structured markdown ticket list.
+SYSTEM_PROMPT = """You are writing a concise morning email to yourself with a structured markdown update.
 
 Return exactly these sections in this order:
-1) ## Completed (with proof)
-2) ## In progress
+1) ## Today's meetings
+2) ## Completed (with proof)
+3) ## In progress
+4) ## Other work
 
 Formatting requirements:
-- Use bullet points for tickets.
+- Keep the tone as a personal morning brief.
+- Use bullet points for tickets and commits.
+- In Today's meetings, list only the provided meetings.
 - Each ticket bullet must include the ticket title and ID.
 - Under each ticket, add either:
-  - "Proof:" followed by matching commit message(s) and short repo/SHA details, OR
+  - "Proof:" followed by matching commit message(s), repo names, and short SHA details, OR
   - "(No matching commits found)" when there is no proof commit.
-- Keep it concise and suitable to read out loud.
+- Mention a compact changed-files detail for proof commits when available.
+- In Other work, list unmatched commits as short bullets with repo + SHA + message.
+- Keep it concise and easy to scan.
 - Do not invent tickets or commits. Use only the provided data.
 """
+
+
+def build_card_status_counts(cards: list[dict]) -> dict:
+    counts: dict[str, int] = {}
+    for card in cards:
+        status = str(card.get("cardStatus") or "unknown").strip().lower() or "unknown"
+        counts[status] = counts.get(status, 0) + 1
+    return counts
 
 
 def build_daily_payload(data: dict) -> dict:
@@ -37,17 +51,20 @@ def build_daily_payload(data: dict) -> dict:
     commits = github.get("commits") or []
     completed_cards = leankit.get("finished_yesterday") or []
     in_progress_cards = leankit.get("started_cards") or []
+    relevant_cards = dedupe_cards(completed_cards + in_progress_cards)
 
     return {
         "mode": data.get("mode"),
         "generated_at": data.get("generated_at"),
         "windows": data.get("windows"),
+        "cards_by_status": build_card_status_counts(leankit.get("cards") or []),
         "calendar": {
             "event_count": calendar.get("event_count"),
             "events": calendar.get("events") or [],
         },
         "tickets_completed": enrich_cards_with_commit_proof(completed_cards, commits),
         "tickets_in_progress": enrich_cards_with_commit_proof(in_progress_cards, commits),
+        "other_work": commits_without_ticket(relevant_cards, commits),
     }
 
 
@@ -85,7 +102,7 @@ def main() -> None:
             {
                 "role": "user",
                 "content": (
-                    "Format this daily ticket activity as the required structured standup list.\n\n"
+                    "Format this as a concise morning email to myself using the required sections.\n\n"
                     f"{json.dumps(payload, ensure_ascii=True)}"
                 ),
             }

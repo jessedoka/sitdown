@@ -9,24 +9,35 @@ import os
 from pathlib import Path
 
 from openai import OpenAI
-from standup_utils import dedupe_cards, enrich_cards_with_commit_proof
+from standup_utils import commits_without_ticket, dedupe_cards, enrich_cards_with_commit_proof
 
 
-SYSTEM_PROMPT = """You are writing a weekly catch-up as a structured markdown ticket list.
+SYSTEM_PROMPT = """You are writing a concise morning email to yourself as a weekly catch-up.
 
 Return exactly these sections in this order:
-1) ## Tickets completed this week (with proof)
-2) ## Tickets in progress
+1) Tickets completed this week (with proof)
+2) Tickets in progress
+3) Other work
 
 Formatting requirements:
 - Use bullet points for tickets.
 - Each ticket bullet must include the ticket title and ID.
 - Under each ticket, add either:
-  - "Proof:" followed by matching commit message(s) and short repo/SHA details, OR
+  - "Proof:" followed by matching commit message(s), repo names, and short repo/SHA details, OR
   - "(No matching commits found)" when there is no proof commit.
+- Mention compact changed-files detail when available for proof commits.
+- In Other work, list unmatched commits as short bullets with repo + SHA + message.
 - Keep the output concise and readout-friendly.
 - Do not invent tickets or commits.
 """
+
+
+def build_card_status_counts(cards: list[dict]) -> dict:
+    counts: dict[str, int] = {}
+    for card in cards:
+        status = str(card.get("cardStatus") or "unknown").strip().lower() or "unknown"
+        counts[status] = counts.get(status, 0) + 1
+    return counts
 
 
 def build_weekly_payload(data: dict) -> dict:
@@ -44,13 +55,16 @@ def build_weekly_payload(data: dict) -> dict:
     in_progress = [
         card for card in in_progress if "started" in str(card.get("cardStatus") or "").lower()
     ]
+    relevant_cards = dedupe_cards(completed_this_week + in_progress)
 
     return {
         "mode": data.get("mode"),
         "generated_at": data.get("generated_at"),
         "windows": data.get("windows"),
+        "cards_by_status": build_card_status_counts(leankit.get("cards") or []),
         "tickets_completed": enrich_cards_with_commit_proof(completed_this_week, commits),
         "tickets_in_progress": enrich_cards_with_commit_proof(in_progress, commits),
+        "other_work": commits_without_ticket(relevant_cards, commits),
     }
 
 
@@ -88,7 +102,7 @@ def main() -> None:
             {
                 "role": "user",
                 "content": (
-                    "Format this weekly ticket activity as the required structured catch-up list.\n\n"
+                    "Format this as a concise morning catch-up email to myself using the required sections.\n\n"
                     f"{json.dumps(payload, ensure_ascii=True)}"
                 ),
             }

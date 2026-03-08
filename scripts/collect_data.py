@@ -277,7 +277,14 @@ def collect_calendar_data(calendar_id: str, windows: Dict[str, Window], mode: st
             orderBy="startTime",
         )
     )
-    events = req.execute().get("items", [])
+    raw_events = req.execute().get("items", [])
+    annual_leave_in_raw = any(
+        "annual leave" in str((event or {}).get("summary") or "").lower() for event in raw_events
+    )
+    events = raw_events
+    if mode == "daily":
+        # For daily standup context, keep only non-recurring meetings.
+        events = [event for event in events if not (event or {}).get("recurringEventId")]
     compact_events = [
         {
             "id": e.get("id"),
@@ -289,7 +296,7 @@ def collect_calendar_data(calendar_id: str, windows: Dict[str, Window], mode: st
         for e in events
     ]
 
-    leave_detected = any("annual leave" in (evt.get("summary") or "").lower() for evt in compact_events)
+    leave_detected = annual_leave_in_raw
 
     return {
         "calendar_id": calendar_id,
