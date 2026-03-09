@@ -1,4 +1,4 @@
-# SitDown (GitHub Actions + OpenAI + Resend)
+# SitDown
 
 Automated standup and weekly catch-up summaries using:
 - GitHub commit activity
@@ -11,7 +11,7 @@ If an `Annual Leave` event is present on your Google Calendar, the workflow skip
 
 ## Workflows
 
-- `daily-standup.yml`: Mon-Fri at 9:00 UTC
+- `daily-standup.yml`: Mon-Fri at 8:00 UTC
 - `weekly-catchup.yml`: Tuesday at 9:00 UTC
 
 Both workflows also support manual run via `workflow_dispatch`.
@@ -23,7 +23,7 @@ Configure these repository secrets in GitHub:
 - `OPENAI_API_KEY`
 - `RESEND_API_KEY`
 - `STANDUP_EMAIL` (recipient email address)
-- `LEANKIT_BEARER_TOKEN`
+- `LEANKIT_BEARER_TOKEN` if your using leankit api 
 - `GOOGLE_CALENDAR_CREDENTIALS` (base64-encoded service-account JSON)
 - `GOOGLE_CALENDAR_ID` (for example `jesse.doka-nwogu@singletrack.com`)
 
@@ -55,14 +55,14 @@ Set environment variables locally:
 export GITHUB_TOKEN="..."
 export LEANKIT_BEARER_TOKEN="..."
 export GOOGLE_CALENDAR_CREDENTIALS="..."   # base64 JSON
-export GOOGLE_CALENDAR_ID="jesse.doka-nwogu@singletrack.com"
+export GOOGLE_CALENDAR_ID=""
 export OPENAI_API_KEY="..."
 export OPENAI_MODEL="gpt-4o-mini"          # optional
 export RESEND_API_KEY="..."
 export STANDUP_EMAIL="you@example.com"
-export RESEND_FROM="Breaking Standup <onboarding@resend.dev>"  # optional
-export GITHUB_ORG="singletracksystems"
-export GITHUB_AUTHOR="jessedoka"
+export RESEND_FROM="Breaking Standup <onboarding@email.com>"  # optional
+export GITHUB_ORG=""
+export GITHUB_AUTHOR=""
 ```
 
 ### One-command scripts (recommended)
@@ -109,14 +109,6 @@ python scripts/collect_data.py --mode weekly --output data.json --timezone Europ
 python scripts/generate_catchup.py --input data.json --output summary.txt
 python scripts/send_email.py --input summary.txt --subject "Weekly Catch-up"
 ```
-
-## Slack + Anthropic Branch
-
-If you need the old Slack + Anthropic flow, keep or create a branch named `slack-anthropic` from the previous state. That branch should continue to use:
-
-- `ANTHROPIC_API_KEY` and optional `ANTHROPIC_MODEL`
-- `SLACK_BOT_TOKEN` and `SLACK_USER_ID`
-- `scripts/send_slack.py`
 
 ## Data Shape (high level)
 
