@@ -27,7 +27,7 @@ jobs:
       - name: Collect data
         id: collect
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.STANDUP_GITHUB_TOKEN || github.token }}
           LEANKIT_BEARER_TOKEN: ${{ secrets.LEANKIT_BEARER_TOKEN }}
           GOOGLE_CALENDAR_CREDENTIALS: ${{ secrets.GOOGLE_CALENDAR_CREDENTIALS }}
           GOOGLE_CALENDAR_ID: ${{ secrets.GOOGLE_CALENDAR_ID }}
